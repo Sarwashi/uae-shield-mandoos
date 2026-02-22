@@ -1,0 +1,50 @@
+[
+  {
+    "id": 1771792727089,
+    "player": "1",
+    "box": 16,
+    "result": "WIN",
+    "prize": "🎖️ ID رباعي ",
+    "time": "2/23/2026, 12:38:47 AM"
+  },
+  {
+    "id": 1771792728071,
+    "player": "1",
+    "box": 17,
+    "result": "LOSE",
+    "prize": "EMPTY",
+    "time": "2/23/2026, 12:38:48 AM"
+  },
+  {
+    "id": 1771792787786,
+    "player": "",
+    "box": "",
+    "result": "CLEAR_IDS",
+    "prize": "ALL",
+    "time": "2/23/2026, 12:39:47 AM"
+  },
+  {
+    "id": 1771792787963,
+    "player": "",
+    "box": "",
+    "result": "CLEAR_IDS",
+    "prize": "ALL",
+    "time": "2/23/2026, 12:39:47 AM"
+  },
+  {
+    "id": 1771792788127,
+    "player": "",
+    "box": "",
+    "result": "CLEAR_IDS",
+    "prize": "ALL",
+    "time": "2/23/2026, 12:39:48 AM"
+  },
+  {
+    "id": 1771792957606,
+    "player": "",
+    "box": "",
+    "result": "CLEAR_IDS",
+    "prize": "ALL",
+    "time": "2/23/2026, 12:42:37 AM"
+  }
+]
