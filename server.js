@@ -32,11 +32,8 @@ const PRIZES = [
   "🎖️ مرشح للاداره العليا ",
   "🎁 nitro game ",
   "🎁 steam gift 10$ ",
-  "🎁 amazon gift 25$ ",
-  "🎁 noon gift 20$ ",
+  "🎁 noon gift 10$ ",
   "🎁 اختار صندوق اخر  ",
-  "💰 50$ cash ",
-  
 ];
 
 // ==============
