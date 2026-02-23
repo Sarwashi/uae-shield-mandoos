@@ -2,8 +2,11 @@ const http = require("http");
 const { URL } = require("url");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 
-const PORT = 505;
+// ✅ Render/Railway use PORT env
+const PORT = process.env.PORT || 5054;
+const HOST = "0.0.0.0";
 const TOTAL = 30;
 
 // غيّر PIN إذا تبي حماية للوحة التحكم
@@ -12,6 +15,10 @@ const ADMIN_PIN = "U-S";
 // روابط صوت (ضع ملفاتك داخل فولدر sounds)
 const WIN_SOUND  = "/sounds/win.mp3";   // صوت الفوز
 const LOSE_SOUND = "/sounds/lose.mp3";  // صوت الفاضي
+
+// ✅ GIFs للـ OBS Overlay
+const WIN_GIF  = "/assets/win.gif";
+const LOSE_GIF = "/assets/lose.gif";
 
 const PRIZES = [
   "🦸 حزمة سوبر هيرو ",
@@ -22,7 +29,7 @@ const PRIZES = [
   "🎖️ V2-m ",
   "🎖️ ترقيه الى رتبة ماجستيك ",
   "🎖️ مرشح للاداره العليا ",
-  "🎁 nitro game ",  
+  "🎁 nitro game ",
   "🎁 steam gift 10$ ",
   "🎁 amazon gift 25$ ",
   "🎁 noon gift 20$ ",
@@ -74,7 +81,6 @@ function shuffleRound() {
 
   const used = new Set();
   for (const prize of PRIZES) {
-    // لو الجوائز أكثر من عدد الصناديق، وقف
     if (used.size >= TOTAL) break;
 
     let idx;
@@ -110,11 +116,9 @@ function isAuthed(url) {
   const pin = url.searchParams.get("pin");
   return !ADMIN_PIN || pin === ADMIN_PIN;
 }
-
 function normId(s) {
   return String(s || "").trim();
 }
-
 function addParticipant(id) {
   id = normId(id);
   if (!id) return { ok: false, msg: "❌ اكتب ID صحيح" };
@@ -122,14 +126,12 @@ function addParticipant(id) {
   participants.push(id);
   return { ok: true, msg: `✅ تم إضافة ID: ${id}` };
 }
-
 function removeParticipant(id) {
   id = normId(id);
   const before = participants.length;
   participants = participants.filter(x => x !== id);
   return before !== participants.length;
 }
-
 function pickRandomFromParticipants(count = 1, removeAfter = false) {
   const pool = [...participants];
   if (pool.length === 0) return { ok: false, msg: "⚠️ ما في IDs بالقائمة" };
@@ -137,17 +139,13 @@ function pickRandomFromParticipants(count = 1, removeAfter = false) {
   count = Math.max(1, Math.min(count, pool.length));
 
   const winners = [];
-  const poolIndices = [];
-
   while (winners.length < count) {
     const idx = Math.floor(Math.random() * pool.length);
     winners.push(pool[idx]);
-    poolIndices.push(idx);
     pool.splice(idx, 1);
   }
 
   if (removeAfter) {
-    // احذف الفائزين من القائمة الأصلية
     const winSet = new Set(winners);
     participants = participants.filter(x => !winSet.has(x));
   }
@@ -166,6 +164,7 @@ function serveFile(res, filePath) {
     ext === ".jpg" || ext === ".jpeg" ? "image/jpeg" :
     ext === ".webp" ? "image/webp" :
     ext === ".svg" ? "image/svg+xml" :
+    ext === ".gif" ? "image/gif" :
     "application/octet-stream";
 
   fs.readFile(filePath, (err, data) => {
@@ -365,6 +364,22 @@ function overlayPage() {
   .sub{margin-top:6px;opacity:.75;font-size:13px;}
   .pop{animation:pop .28s ease-out;}
   @keyframes pop{from{transform:translateY(8px);opacity:.5}to{transform:translateY(0);opacity:1}}
+
+  /* GIF Layer */
+  .gifWrap{
+    position:fixed;
+    left:50%;
+    top:55%;
+    transform:translate(-50%,-50%);
+    width:min(520px,90vw);
+    pointer-events:none;
+    display:none;
+    z-index:9999;
+    filter:drop-shadow(0 18px 40px rgba(0,0,0,.55));
+  }
+  .gifWrap.show{display:block; animation:gifPop .25s ease-out;}
+  @keyframes gifPop{from{transform:translate(-50%,-40%) scale(.92);opacity:.4}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+  .gifWrap img{width:100%;height:auto;border-radius:18px}
 </style>
 </head>
 <body>
@@ -381,10 +396,28 @@ function overlayPage() {
     <div class="sub">يعرض اسم اللاعب + رقم الصندوق + النتيجة / أو سحب عشوائي IDs</div>
   </div>
 
+  <!-- GIF -->
+  <div class="gifWrap" id="gifWrap">
+    <img id="gifImg" src="" alt="result gif" />
+  </div>
+
   <audio id="aud" preload="auto"></audio>
 
 <script>
 let lastTime = 0;
+let hideTimer = null;
+
+function showGif(src){
+  const wrap = document.getElementById("gifWrap");
+  const img  = document.getElementById("gifImg");
+  img.src = src + "?t=" + Date.now(); // force refresh
+  wrap.classList.add("show");
+
+  if (hideTimer) clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => {
+    wrap.classList.remove("show");
+  }, 3500);
+}
 
 async function tick(){
   const r = await fetch("/state");
@@ -401,23 +434,31 @@ async function tick(){
     const d = new Date(t);
     document.getElementById("time").textContent = d.toLocaleTimeString();
 
+    // ✅ الصوت
     if(s.last.sound){
       const aud = document.getElementById("aud");
       aud.src = s.last.sound + "?t=" + Date.now();
       aud.currentTime = 0;
       aud.play().catch(()=>{});
     }
+
+    // ✅ GIF
+    if (s.last.isWin === true) {
+      showGif((s.gifs && s.gifs.win) ? s.gifs.win : "/assets/win.gif");
+    } else if (s.last.isWin === false && s.last.box !== null) {
+      showGif((s.gifs && s.gifs.lose) ? s.gifs.lose : "/assets/lose.gif");
+    }
   }
 }
 tick();
-setInterval(tick, 400);
+setInterval(tick, 350);
 </script>
 </body>
 </html>`;
 }
 
 function logsPage(pin) {
-  const data = readLogs().slice().reverse(); // newest first
+  const data = readLogs().slice().reverse();
   const rows = data.map(l => {
     const cls = l.result === "WIN" ? "win" : "lose";
     return `
@@ -486,6 +527,16 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
+function getLocalIP() {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] || []) {
+      if (net.family === "IPv4" && !net.internal) return net.address;
+    }
+  }
+  return "localhost";
+}
+
 // ==============
 // SERVER
 // ==============
@@ -498,7 +549,7 @@ const server = http.createServer((req, res) => {
     return serveFile(res, localPath);
   }
 
-  // Static assets (logo)
+  // Static assets
   if (url.pathname.startsWith("/assets/")) {
     const localPath = path.join(__dirname, url.pathname);
     return serveFile(res, localPath);
@@ -540,7 +591,8 @@ const server = http.createServer((req, res) => {
     return json(res, {
       picked: Array.from(picked).sort((a,b)=>a-b),
       last: lastResult,
-      participants
+      participants,
+      gifs: { win: WIN_GIF, lose: LOSE_GIF }
     });
   }
 
@@ -594,7 +646,7 @@ const server = http.createServer((req, res) => {
     return send(res, 200, "✅ تم تصفير جميع الـIDs", "text/plain; charset=utf-8");
   }
 
-  // ✅ سحب عشوائي (count=1..n) + remove=1 يحذف بعد السحب (عشان ما يتكرر)
+  // ✅ سحب عشوائي (count=1..n) + remove=1 يحذف بعد السحب
   if (url.pathname === "/draw") {
     if (!isAuthed(url)) return send(res, 403, "❌ PIN خطأ");
 
@@ -722,23 +774,14 @@ const server = http.createServer((req, res) => {
   return send(res, 404, "Not Found", "text/plain; charset=utf-8");
 });
 
-const os = require("os");
-
-function getLocalIP() {
-  const nets = os.networkInterfaces();
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name]) {
-      if (net.family === "IPv4" && !net.internal) {
-        return net.address;
-      }
-    }
-  }
-  return "localhost";
-}
-
-const HOST = "0.0.0.0";
-
 server.listen(PORT, HOST, () => {
+  const ip = getLocalIP();
+  console.log("=======================================");
   console.log("🚀 UAE SHIELD MANDOOS RUNNING");
-  console.log(`Local: http://localhost:${PORT}`);
+  console.log("=======================================");
+  console.log(`🖥 Local:   http://localhost:${PORT}/`);
+  console.log(`🌐 LAN:     http://${ip}:${PORT}/`);
+  console.log(`🎬 Overlay: http://${ip}:${PORT}/overlay`);
+  console.log(`🔒 PIN:     ${ADMIN_PIN ? "ON" : "OFF"}`);
+  console.log("=======================================");
 });
