@@ -5,7 +5,7 @@ const path = require("path");
 const os = require("os");
 
 // ✅ Render/Railway use PORT env
-const PORT = process.env.PORT || 5021;
+const PORT = process.env.PORT || 5054;
 const HOST = "0.0.0.0";
 const TOTAL = 30;
 
@@ -17,8 +17,8 @@ const WIN_SOUND  = "/sounds/win.mp3";   // صوت الفوز
 const LOSE_SOUND = "/sounds/lose.mp3";  // صوت الفاضي
 
 // ✅ GIFs للـ OBS Overlay
-const WIN_VID  = "/assets/win.webm";
-const LOSE_VID = "/assets/lose.webm";
+const WIN_GIF  = "/assets/win.gif";
+const LOSE_GIF = "/assets/lose.gif";
 
 const PRIZES = [
   "🦸 حزمة سوبر هيرو ",
@@ -397,7 +397,7 @@ function overlayPage() {
   </div>
 
   <!-- GIF -->
-   <video id="fxVid" playsinline muted></video>
+  <div class="gifWrap" id="gifWrap">
     <img id="gifImg" src="" alt="result gif" />
   </div>
 
@@ -407,25 +407,15 @@ function overlayPage() {
 let lastTime = 0;
 let hideTimer = null;
 
-function showFx(src){
+function showGif(src){
   const wrap = document.getElementById("gifWrap");
-  const v = document.getElementById("fxVid");
-
+  const img  = document.getElementById("gifImg");
+  img.src = src + "?t=" + Date.now(); // force refresh
   wrap.classList.add("show");
-
-  // force reload
-  v.pause();
-  v.src = src + "?t=" + Date.now();
-  v.currentTime = 0;
-
-  v.onloadeddata = () => {
-    v.play().catch(()=>{});
-  };
 
   if (hideTimer) clearTimeout(hideTimer);
   hideTimer = setTimeout(() => {
     wrap.classList.remove("show");
-    v.pause();
   }, 3500);
 }
 
@@ -453,11 +443,11 @@ async function tick(){
     }
 
     // ✅ GIF
-  if (s.last.isWin === true) {
-  showFx((s.gifs && s.gifs.win) ? s.gifs.win : "/assets/win.webm");
-} else if (s.last.isWin === false && s.last.box !== null) {
-  showFx((s.gifs && s.gifs.lose) ? s.gifs.lose : "/assets/lose.webm");
-}
+    if (s.last.isWin === true) {
+      showGif((s.gifs && s.gifs.win) ? s.gifs.win : "/assets/win.gif");
+    } else if (s.last.isWin === false && s.last.box !== null) {
+      showGif((s.gifs && s.gifs.lose) ? s.gifs.lose : "/assets/lose.gif");
+    }
   }
 }
 tick();
