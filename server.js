@@ -10,7 +10,7 @@ const HOST = "0.0.0.0";
 const TOTAL = 30;
 
 // غيّر PIN إذا تبي حماية للوحة التحكم
-const ADMIN_PIN = "U-S";
+const ADMIN_PIN = "1234abcd";
 
 // روابط صوت (ضع ملفاتك داخل فولدر sounds)
 const WIN_SOUND  = "/sounds/win.mp3";   // صوت الفوز
